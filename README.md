@@ -2,7 +2,7 @@
 
 A local web app that verifies and indexes AI-evaluation receipts for SASH's Four Pillars project.
 
-The registry runs six checks on each submitted receipt, stores the exact bytes it received for each
+The registry runs seven checks on each submitted receipt, stores the exact bytes it received for each
 accepted receipt, and lists what it accepted. Work in progress: receipt ingestion, the index and the
 read API work; the UI is still being built.
 
@@ -17,7 +17,7 @@ fields and allows any others:
 
 | Field | What it says |
 |---|---|
-| `evalPipeline` | what was evaluated: `models` (the `base` model, adapters, classifiers…) and `config` (sampling settings…), each by digest. The statement's subject is sha256 of this object's JCS. |
+| `evalPipeline` | what was evaluated: `models` (the `base` model, adapters, classifiers…) and `config` (sampling settings…), each by digest, with optional `params` (such as sampling's temperature) shown as given. The statement's subject is sha256 of this object's JCS. |
 | `evalDataset` | the eval dataset, by digest |
 | `results` | the metrics and item counts |
 | `execution` | when it ran, and the hardware attestation: `referenceValue`, the GitHub release whose Sigstore-signed measurement the enclave should match, and `keyBinding`, Tinfoil's [attested keys](https://docs.tinfoil.sh/containers/attested-keys): an AMD SEV-SNP report whose `report_data` commits to `crypto_material`, which holds the enclave's Ed25519 signing key |
@@ -37,10 +37,16 @@ real receipt from OpenMined's enclave, and most test fixtures are built from its
 | 4 | measurement | the attested measurement is the Sigstore-signed release of a trusted repo |
 | 5 | digests | the subject digest is sha256 of `evalPipeline`'s JCS |
 | 6 | consent | an approval comes from an email on the registry's policy list |
+| 7 | publication | the receipt is logged on [Rekor](https://docs.sigstore.dev/logging/overview/), Sigstore's public transparency log: the entry at the submitted log index holds the receipt's signature and signing key |
 
 A receipt is listed as **verified** when every check passes. A receipt with no hardware report
-(checks 2–4 pending) is accepted as **incomplete**, in dev mode only. Anything else is refused.
+(checks 2–4 and 7 pending) is accepted as **incomplete**, in dev mode only. Anything else is refused.
 OpenMined checks who owns each approver email; the registry only matches emails against its list.
+
+OpenMined's benchmark owner logs each receipt on Rekor v1 right after the run, and gets back the entry's log
+index. Submit that index with the receipt, as the `logIndex` form field: it is required for any receipt with
+a hardware report. Check 7 fetches that one entry. It trusts Rekor's answer: it doesn't verify the entry's
+signed timestamp or inclusion proof, and it doesn't say who logged the receipt.
 
 
 ## Run it
@@ -50,10 +56,11 @@ Needs Python 3.12 with [uv](https://docs.astral.sh/uv/), and Node with pnpm 11 (
 ```bash
 uv sync
 uv run pytest -m "not network"      # offline tests
-uv run pytest                       # also the network tests (AMD via Tinfoil, Sigstore, GitHub)
+uv run pytest                       # also the network tests (AMD via Tinfoil, Sigstore, GitHub, Rekor)
 
 REGISTRY_MODE=dev uv run flask --app registry.app run --port 5050 --reload
 curl -X POST http://127.0.0.1:5050/api/records -F 'record=@fixtures/generated/sim_A.dsse.json'
+curl -X POST http://127.0.0.1:5050/api/records -F 'record=@fixtures/openmined/receipt.dsse.json' -F 'logIndex=3129204433'
 uv run python scripts/seed_dev.py   # POSTs every fixture dev mode accepts, OpenMined's real receipt included
 
 REGISTRY_MODE=dev uv run python scripts/rebuild_index.py   # after editing the policy; then restart
@@ -66,7 +73,7 @@ cd web && pnpm install && pnpm dev  # UI at http://localhost:5173
 - **Trust.** Trust comes only from the policy file (`registry-policy.yaml`, or `registry-policy.dev.yaml`
   in dev mode, copied from the example on first run). `trusted_code` lists the repos check 4 trusts, and
   `benchmark_owners` lists the approver emails check 6 accepts.
-- **Network.** Checks 3 and 4 need the network. If it can't be reached, the POST returns 503 and
+- **Network.** Checks 3, 4 and 7 need the network. If it can't be reached, the POST returns 503 and
   nothing is stored.
 - **Index.** The store (`data/<mode>/store`) holds the exact bytes of each accepted receipt; the index
   (`data/<mode>/index.sqlite3`) is derived from it. The server refuses to start on an index built under

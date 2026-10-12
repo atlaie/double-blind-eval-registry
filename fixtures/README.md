@@ -3,7 +3,7 @@
 Apart from OpenMined's receipt (`openmined/`), nothing here is a trustworthy record. Fixture keys are
 derived from public names. Most fixtures' hardware reports are `SIMULATED-` sentinels; the rest never bind
 the receipt's key: a real report stapled onto a receipt it doesn't belong to (stapled_B, C11–C13; C8 with
-one byte flipped), or random bytes (C9). Never publish a fixture to production Sigstore.
+one byte flipped), or random bytes (C9). Never publish a fixture to production Sigstore, and never log one on Rekor.
 
 | Path | Contents | Made by |
 |---|---|---|
@@ -11,6 +11,7 @@ one byte flipped), or random bytes (C9). Never publish a fixture to production S
 | `openmined/sample-receipt.json` | The same statement, without its DSSE envelope, so unsigned (fixture U7). | Given by OpenMined. Never edit. |
 | `generated/`, `expected.json` | A signed receipt for each test case, and the verdict each one should get. | `uv run python scripts/make_fixtures.py` (deterministic). Never hand-edit. |
 | `dbe/sample-receipt.json` | A sample of DBE's own receipt format, dbe-receipt-v1, which the registry does not accept (fixture U6). | Captured once; see below. Never regenerate. |
+| `rekor/` | Rekor's answer for OpenMined's receipt: `om_receipt.entry.json`, its entry, fetched by its log index (3129204433). Offline tests answer check 7 with it. | Captured once with curl; see below. Never edit. |
 | `tinfoil/` | Live SEV-SNP reports (`<name>.quote`: base64 of the raw report) with a sidecar (`<name>.meta.json`: repo, release tag, capture time). C11 and C12 are built from the router capture. | Captured once; see below. `scripts/capture_tinfoil_reports.py` never overwrites a capture. Never regenerate. |
 
 `registry-policy.dev.example.yaml` lists an approver email of every fixture except `C6_unlisted_approver`,
@@ -35,6 +36,26 @@ fixtures leave out its statement's bulky parts the registry never reads: file co
   for offline verification".
 - Git blob `dca8df89527b4d54a3eed99a33d02a42e1f1f332`, 2655 bytes: `git hash-object fixtures/dbe/sample-receipt.json`
   prints it.
+
+## `rekor/`
+
+Rekor's answer, saved byte for byte, for the entry OpenMined's benchmark owner logged, fetched as check 7
+fetches it: by its log index.
+
+```bash
+curl 'https://rekor.sigstore.dev/api/v1/log/entries?logIndex=3129204433' -o om_receipt.entry.json
+```
+
+| File | sha256 | Bytes |
+|---|---|---|
+| `om_receipt.entry.json` | `5ee741943e59cb0f2e79f6ebd63c861d6f7661e7f448c5c4cf541c2d95e6db88` | 3577 |
+
+`expected.json` gives every fixture with a hardware report this `logIndex`, and the tests POST them with it.
+Only `om_receipt` is in that entry, so check 7 FAILs the others.
+
+The entry is Rekor v1 `dsse` entry 3129204433. Its payload hash and signature
+are the receipt's; its envelope hash isn't sha256 of `receipt.dsse.json`, because the envelope was
+re-serialised before it was logged.
 
 ## `tinfoil/`
 

@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from registry import spec
 from registry.envelope import parse_receipt
 from registry.index import MODEL_ROLE, Component, Index, IndexedRecord, StaleIndex
-from registry.model import CHECK_IDS, Accepted, Check, Enclave, Status
+from registry.model import CHECK_IDS, Accepted, Check, Enclave, Publication, Status
 from registry.syft_receipt import parse_statement, to_index
 
 POLICY_SHA256 = "00" * 32
@@ -21,13 +21,16 @@ T0, T1 = "2026-10-01T00:00:00Z", "2026-10-01T00:00:01Z"
 DEV_ACCEPTED = [name for name, entry in EXPECTED.items() if entry["dev"]["status"] == 201]
 ENCLAVE = Enclave(measurement="33" * 48, repo="OpenMined/syft-enclave-tinfoil", release_tag="v0.1.28",
                   release_digest="74" * 32)
+PUBLICATION = Publication(uuid="10" * 40, log_index=3129204433, integrated_time=1791368875,
+                          url=spec.REKOR_SEARCH_LINK.format(3129204433))
 
 
-def indexed(name: str, received_at: str = T0, state: str = "incomplete", enclave: Enclave | None = None) -> IndexedRecord:
+def indexed(name: str, received_at: str = T0, state: str = "incomplete", enclave: Enclave | None = None,
+            publication: Publication | None = None) -> IndexedRecord:
     """Fixture `name` as the adapter indexes it once accepted, with its expected check results."""
     raw = record(name)
     checks = tuple(Check(check_id, Status(EXPECTED[name]["checks"][check_id]), "stand-in") for check_id in CHECK_IDS)
-    accepted = Accepted(hashlib.sha256(raw).hexdigest(), len(raw), received_at, state, checks, enclave,
+    accepted = Accepted(hashlib.sha256(raw).hexdigest(), len(raw), received_at, state, checks, enclave, publication,
                         f"approver-of-{name}@example.org", f"owner of {name}")
     return to_index(parse_statement(parse_receipt(raw).statement), accepted)
 
@@ -93,6 +96,21 @@ def test_verified_enclave_facts_read_back(index):
     assert index.get(added.record_id).enclave == ENCLAVE
 
 
+def test_publication_facts_read_back_and_the_api_shows_them(index):
+    added = indexed("om_receipt", state="verified", enclave=ENCLAVE, publication=PUBLICATION)
+    index.add(added)
+    read = index.get(added.record_id)
+    assert read.publication == PUBLICATION
+    assert read.to_json()["publication"] == {"uuid": "10" * 40, "logIndex": 3129204433, "integratedTime": 1791368875,
+                                             "url": spec.REKOR_SEARCH_LINK.format(3129204433)}
+
+
+def test_a_record_with_no_publication_reads_back_none(index):
+    added = indexed("sim_A")
+    index.add(added)
+    assert index.get(added.record_id).publication is None
+
+
 def test_adding_an_indexed_record_again_changes_nothing(index):
     first = indexed("sim_A", T0)
     assert index.add(first)
@@ -119,6 +137,14 @@ def test_components_are_rows_of_their_own_in_receipt_order(index):
     assert [row[0] for row in rows] == [MODEL_ROLE, "adapter", "safety_classifier", "sampling"]
 
 
+def test_component_params_read_back(index):
+    added = indexed("om_receipt")
+    index.add(added)
+    assert [c.params for c in index.get(added.record_id).components] == [c.params for c in added.components]
+    assert next(c for c in added.components if c.role == "sampling").params == {
+        "max_new_tokens": 48, "temperature": 0.8, "top_k": 40}
+
+
 def test_recent_records_are_newest_first_and_limited(seeded):
     assert [r.record_id for r in seeded.recent(3)] == ids("D7", "D6", "D5")
 
@@ -143,6 +169,13 @@ def test_a_system_shows_its_components_with_their_labels(seeded):
     assert [a["scheme"] for a in base["alsoKnownAs"]] == ["hf-revision/1"] and base["akaConflicts"] is False
 
 
+def test_a_system_shows_its_components_params(seeded):
+    # Records of one system share its evalPipeline (check 5), so they give each component the same params.
+    view = seeded.system(indexed("D1").system_digest)
+    assert [c["params"] for c in view["components"]] == [c.params for c in indexed("D1").components]
+    assert view["components"][-1]["params"] is not None
+
+
 def test_an_unknown_system_is_none(seeded):
     assert seeded.system("ab" * 32) is None
 
@@ -160,7 +193,7 @@ def test_a_component_is_found_by_its_hex_digest_without_the_sha256_prefix(index)
     # OCI digests carry a sha256: prefix; a lookup is by the bare hex.
     d1 = indexed("D1")
     oci = Component(role="runtime", scheme=spec.OCI_SCHEME, digest="sha256:" + "cd" * 32, name="runtime 1.0",
-                    also_known_as=())
+                    also_known_as=(), params=None)
     index.add(d1.model_copy(update={"components": (*d1.components, oci)}))
     view = index.component("cd" * 32)
     assert (view["roles"], view["schemes"], view["names"]) == (["runtime"], [spec.OCI_SCHEME], ["runtime 1.0"])
