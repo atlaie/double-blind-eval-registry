@@ -3,8 +3,20 @@
 A local web app that verifies and indexes AI-evaluation receipts for SASH's Four Pillars project.
 
 The registry runs seven checks on each submitted receipt, stores the exact bytes it received for each
-accepted receipt, and lists what it accepted. Work in progress: receipt ingestion, the index and the
-read API work; the UI is still being built.
+accepted receipt, and lists what it accepted in a read API and a web UI.
+
+## Run it
+
+Needs Python 3.12 with [uv](https://docs.astral.sh/uv/), and Node with pnpm 11 (via corepack).
+
+```bash
+uv sync                                                # backend dependencies
+cd web && pnpm install && pnpm build && cd ..          # frontend, built into web/dist
+uv run flask --app registry.app run --port 5050        # backend and UI at http://127.0.0.1:5050
+```
+
+Add `REGISTRY_MODE=dev` before `uv run flask` to run in dev mode, which also accepts test data. To work on
+the UI with live reload, keep the backend running and run `cd web && pnpm dev` for http://localhost:5173.
 
 ## Receipts
 
@@ -49,9 +61,7 @@ a hardware report. Check 7 fetches that one entry. It trusts Rekor's answer: it 
 signed timestamp or inclusion proof, and it doesn't say who logged the receipt.
 
 
-## Run it
-
-Needs Python 3.12 with [uv](https://docs.astral.sh/uv/), and Node with pnpm 11 (via corepack).
+## Commands
 
 ```bash
 uv sync
@@ -66,6 +76,8 @@ uv run python scripts/seed_dev.py   # POSTs every fixture dev mode accepts, Open
 REGISTRY_MODE=dev uv run python scripts/rebuild_index.py   # after editing the policy; then restart
 
 cd web && pnpm install && pnpm dev  # UI at http://localhost:5173
+cd web && pnpm build                # Flask then serves the UI at http://127.0.0.1:5050
+cd web && pnpm test                 # the UI's formatting and routing tests (Node's built-in runner)
 ```
 
 - **Modes.** Strict is the default. Dev mode (`REGISTRY_MODE=dev`) also accepts incomplete receipts and
