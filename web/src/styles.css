@@ -179,6 +179,31 @@ td.empty { color: var(--muted); text-align: center; padding: 24px 14px; }
 .notfound h1 { font-size: 22px; }
 .links { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
 
+/* Header and page layout, after the demo presentation: a wider page; a plain header whose navigation is
+   pill buttons, the current page filled; the checks in a panel, as the presentation's verification panel;
+   the record's side column as a card. */
+.wrap { max-width: 1280px; padding-left: clamp(16px, 2.6vw, 40px); padding-right: clamp(16px, 2.6vw, 40px); }
+.top-in { gap: 24px; padding-top: 14px; padding-bottom: 14px; }
+.search { height: 40px; padding: 0 14px; }
+.nav { gap: 8px; }
+.nav a { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; }
+.nav a:hover { border-color: var(--ink); }
+.nav a.on { background: var(--ink); border-color: var(--ink); color: var(--surface, #fff); }
+.band-in { gap: 14px; padding-top: 30px; padding-bottom: 26px; }
+.checks-row { align-items: baseline; margin-top: 4px; padding: 14px 18px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--surface, #fff);
+  box-shadow: 0 12px 28px -12px color-mix(in srgb, var(--ink-2) 18%, transparent); }
+/* The panel's padding narrows the checks grid: two to a row until four fit. */
+@media (min-width: 1101px) and (max-width: 1180px) { .checks { grid-template-columns: repeat(2, minmax(max-content, 1fr)); } }
+.page { padding-top: 32px; padding-bottom: 56px; }
+.stack { gap: 40px; }
+.record { gap: 32px; }
+.record-main { gap: 36px; }
+.rail { flex-basis: 340px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface, #fff); }
+.foot-in { padding-top: 18px; padding-bottom: 32px; }
+.notfound { padding-top: 88px; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* Typography: the demo presentation's fonts, Inter for text and Rubik for headings, a size up from before so
