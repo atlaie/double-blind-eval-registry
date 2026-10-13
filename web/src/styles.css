@@ -149,6 +149,9 @@ footer { border-top: 1px solid var(--line-2); color: var(--muted); font-size: 12
 .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; white-space: nowrap; }
 @media (max-width: 1100px) { .checks { grid-template-columns: repeat(2, minmax(max-content, 1fr)); } }
 @media (max-width: 560px) { .checks { grid-template-columns: minmax(0, 1fr); } .check { white-space: normal; } }
+/* Two long checks side by side (an incomplete record's "Pending: ... pending") don't fit below about 680px:
+   one to a row there too, so the page never scrolls sideways. */
+@media (max-width: 680px) { .checks { grid-template-columns: minmax(0, 1fr); } .check { white-space: normal; } }
 
 /* The one tooltip (TooltipLayer), fixed to the window so no box clips it. tip-b and tip-l are placement hints. */
 .tooltip { position: fixed; z-index: 60; width: max-content; max-width: 280px; background: var(--ink); color: var(--bg);
