@@ -2,6 +2,7 @@
 
 Run with `flask --app registry.app run --port 5050`, which binds to 127.0.0.1.
 Never add --host 0.0.0.0 or --debug: the Werkzeug debugger allows remote code execution.
+A deployment runs it under gunicorn instead (railpack.json) and sets REGISTRY_PUBLIC_HOST to its hostname.
 """
 
 import importlib.metadata
@@ -28,6 +29,7 @@ from registry.store import Store
 log = logging.getLogger(__name__)
 
 TRUSTED_HOSTS = ["localhost", "127.0.0.1"]  # rejects other Host headers: stops DNS rebinding
+PUBLIC_HOST_ENV = "REGISTRY_PUBLIC_HOST"  # a deployment's own hostname, e.g. its *.up.railway.app domain
 MAX_BODY_BYTES = 1024 * 1024  # 1 MiB
 BUNDLE_IGNORED = "bundle ignored: check 7 looks the receipt up on Rekor"
 LOG_INDEX = re.compile(r"[0-9]{1,18}")  # the receipt's entry on Rekor: a non-negative integer that fits int64
@@ -60,8 +62,12 @@ def create_app() -> Flask:
                    f"REGISTRY_POLICY={shlex.quote(str(config.policy_path))} uv run python scripts/rebuild_index.py")
         raise ConfigError(f"{e}. Rebuild it, then restart: {rebuild}") from e
 
+    public_host = os.environ.get(PUBLIC_HOST_ENV)
+    trusted_hosts = [*TRUSTED_HOSTS, public_host] if public_host else TRUSTED_HOSTS
+    log.debug("trusted hosts: %s", trusted_hosts)
+
     app = Flask(__name__)
-    app.config.update(TRUSTED_HOSTS=TRUSTED_HOSTS, MAX_CONTENT_LENGTH=MAX_BODY_BYTES)
+    app.config.update(TRUSTED_HOSTS=trusted_hosts, MAX_CONTENT_LENGTH=MAX_BODY_BYTES)
     app.url_map.converters["hex64"] = Hex64
 
     @app.errorhandler(HTTPException)

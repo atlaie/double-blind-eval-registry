@@ -72,6 +72,16 @@ def test_local_host_headers_are_accepted(client, host):
     assert client.get("/api/health", headers={"Host": host}).status_code == 200
 
 
+def test_a_deployment_adds_its_own_hostname(monkeypatch):
+    # A deployment is reached at its own hostname (e.g. its *.up.railway.app domain); every other host stays out.
+    Path("registry-policy.yaml").write_bytes(POLICY)
+    monkeypatch.setenv("REGISTRY_PUBLIC_HOST", "registry.example")
+    client = create_app().test_client()
+    assert client.get("/api/health", headers={"Host": "registry.example"}).status_code == 200
+    assert client.get("/api/health", headers={"Host": "localhost:5050"}).status_code == 200
+    assert client.get("/api/health", headers={"Host": "evil.example"}).status_code == 400
+
+
 def test_errors_are_json(client):
     response = client.get("/api/no-such-route")
     assert response.status_code == 404

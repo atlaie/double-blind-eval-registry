@@ -18,6 +18,15 @@ uv run flask --app registry.app run --port 5050        # backend and UI at http:
 Add `REGISTRY_MODE=dev` before `uv run flask` to run in dev mode, which also accepts test data. To work on
 the UI with live reload, keep the backend running and run `cd web && pnpm dev` for http://localhost:5173.
 
+### Deploy on Railway
+
+`railpack.json` builds the UI and starts the registry under gunicorn, in strict mode. In the Railway service:
+
+1. Attach a volume at `/data` and set `REGISTRY_DATA_DIR=/data`, so accepted receipts survive redeploys.
+2. Under Settings → Networking, generate a domain and set `REGISTRY_PUBLIC_HOST` to it (such as
+   `name.up.railway.app`). The registry refuses requests addressed to any other host.
+3. Submit receipts to `https://<domain>/api/records`, as in [Commands](#commands).
+
 ## Receipts
 
 The registry accepts OpenMined's **syft-enclave receipt v3**: the record of one AI evaluation run inside a
