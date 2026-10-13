@@ -34,6 +34,39 @@
   color-scheme: light;
 }
 
+/* Dark theme, following the OS setting: the presentation's own dark palette on the same variables, so no
+   rule changes. Each colour keeps its meaning: green only for Verified, amber only for dev mode. Outlines
+   (boxes, buttons, the search box) take the presentation's stronger dark line, 3:1 or more against what
+   they sit on; the hairlines between rows stay soft. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f7f6f9;
+    --ink-2: #cfcdd6;
+    --muted: #b4b0bf;
+    --faint: #868394;
+    --line: #868394;
+    --line-2: #353243;
+    --link: #aeb6e6;
+    --link-hover: #d2d6ef;
+    --bg: #23202c;
+    --surface: #2e2b3b;
+    --surface-2: #272532;
+    --band: #29263a;
+    --ok: #76cbba;
+    --ok-icon: #76cbba;
+    --ok-soft: #1f3a35;
+    --ok-line: #76cbba;
+    --pend: #f8c073;
+    --pend-icon: #f8c073;
+    --pend-soft: #442903;
+    --pend-line: #f8c073;
+    --bad: #f97066;
+    color-scheme: dark;
+  }
+  /* The checks panel's shadow is tinted with the ink, which would glow in the dark; here it is black. */
+  :root .checks-row { box-shadow: 0 12px 28px -12px rgb(0 0 0 / 0.5); }
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.5;
   -webkit-font-smoothing: antialiased; }
