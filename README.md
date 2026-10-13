@@ -1,6 +1,6 @@
 # Double Blind Eval Registry
 
-A local web app that verifies and indexes AI-evaluation receipts for SASH's Four Pillars project.
+A registry web app that verifies and indexes model evaluation receipts for SASH's Four Pillars project.
 
 The registry runs seven checks on each submitted receipt, stores the exact bytes it received for each
 accepted receipt, and lists what it accepted in a read API and a web UI.
@@ -20,7 +20,13 @@ the UI with live reload, keep the backend running and run `cd web && pnpm dev` f
 
 ### Deploy on Railway
 
-`railpack.json` builds the UI and starts the registry under gunicorn, in strict mode. In the Railway service:
+`railpack.json` builds the UI and starts the registry under gunicorn, in strict mode.
+
+**The policy's benchmark owner is a sample.** `registry-policy.yaml` lists `benchmark_owner@openmined.org`,
+the approver of OpenMined's sample receipt, so that the demo has a receipt to accept. Replace it with the real
+benchmark owners' emails before the registry is used for anything but a demo.
+
+In the Railway service:
 
 1. Attach a volume at `/data` and set `REGISTRY_DATA_DIR=/data`, so accepted receipts survive redeploys.
 2. Under Settings → Networking, generate a domain and set `REGISTRY_PUBLIC_HOST` to it (such as
@@ -29,7 +35,7 @@ the UI with live reload, keep the backend running and run `cd web && pnpm dev` f
 
 ## Receipts
 
-The registry accepts OpenMined's **syft-enclave receipt v3**: the record of one AI evaluation run inside a
+The registry accepts OpenMined's **syft-enclave receipt v3**: the record of one model evaluation run inside a
 [Tinfoil](https://tinfoil.sh) confidential enclave. A receipt is an
 [in-toto Statement v1](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md) with
 `predicateType` `https://openmined.org/syft-enclave/receipt/v3`, signed by the enclave's attested key and
@@ -99,11 +105,12 @@ cd web && pnpm test                 # the UI's formatting and routing tests (Nod
 - **Index.** The store (`data/<mode>/store`) holds the exact bytes of each accepted receipt; the index
   (`data/<mode>/index.sqlite3`) is derived from it. The server refuses to start on an index built under
   another policy or mode, and prints the `scripts/rebuild_index.py` command that rebuilds it.
-- **Localhost only.** Never run with `--host 0.0.0.0` or `--debug`.
+- **Flask on 127.0.0.1 only.** Never run it with `--host 0.0.0.0` or `--debug`. A deployment runs gunicorn
+  instead (see [Deploy on Railway](#deploy-on-railway)).
 
 ## API
 
-JSON on `http://127.0.0.1:5050`. Ids and digests in paths are 64 lowercase hex.
+JSON on `http://127.0.0.1:5050`, or on a deployment's domain. Ids and digests in paths are 64 lowercase hex.
 
 | Endpoint | Returns |
 |---|---|

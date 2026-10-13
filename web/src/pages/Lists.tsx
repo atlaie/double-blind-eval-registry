@@ -59,7 +59,7 @@ export function Home() {
     <>
       <Band>
         <h1>Evaluation records</h1>
-        <p className="lede">Signed records of AI evaluations run in AMD SEV-SNP enclaves.</p>
+        <p className="lede">Signed records of model evaluations run in AMD SEV-SNP enclaves.</p>
         <Meta items={[plural(records.length, 'record'), plural(models.data.models.length, 'model'),
           plural(evals.data.evals.length, 'eval dataset')]} />
       </Band>
